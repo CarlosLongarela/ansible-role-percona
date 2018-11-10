@@ -1,0 +1,5 @@
+---
+- name: Reiniciar percona
+  service:
+    name: "{{ percona_service_name }}"
+    state: restarted

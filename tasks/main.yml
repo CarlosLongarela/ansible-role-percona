@@ -1,0 +1,154 @@
+---
+- name: Añadimos la llave del repositorio.
+  apt_key:
+    keyserver: keyserver.ubuntu.com
+    id: '8507EFA5'
+    state: present
+
+- name: Añadimos el repositorio de Percona
+  apt: deb="https://repo.percona.com/apt/percona-release_0.1-6.xenial_all.deb"
+
+- name: Instalamos el módulo Python MySQLdb
+  pip:
+    name: MySQL-python
+
+- name: Instalamos Percona Server.
+  apt:
+    name:
+      - percona-server-server-5.7
+      - percona-server-client-5.7
+      - percona-toolkit
+      - percona-xtrabackup
+    state: present
+    update_cache: yes
+    cache_valid_time: "{{ aptget_update_cache_valid_time }}"
+
+- name: Iniciamos y activamos el servicio.
+  service:
+    name: "{{ percona_service_name }}"
+    state: started
+    enabled: yes
+
+- name: Copiamos ~/.my.cnf para root.
+  template:
+    src: my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Instalamos el archivo de configuración General de Percona Server.
+  template:
+    src: settings.cnf.j2
+    dest: /etc/mysql/percona-server.conf.d/settings.cnf
+    owner: root
+    group: root
+    mode: 0644
+  notify: Reiniciar percona
+
+- name: Actualizamos la clave de root.
+  mysql_user:
+    name: root
+    host: "{{ item }}"
+    password: "{{ percona_root_password }}"
+    state: present
+  with_items:
+    - 127.0.0.1
+    - ::1
+    - localhost
+  no_log: True
+
+- name: Eliminamos la Base de datos test.
+  mysql_db:
+    name: test
+    state: absent
+
+- name: Eliminamos usuarios anónimos.
+  mysql_user:
+    name: ''
+    host: "{{ item }}"
+    state: absent
+  with_items:
+    - localhost
+
+- name: Creamos las Bases de Datos.
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - "{{ percona_databases }}"
+  no_log: True
+
+- name: Creamos los usuarios de Bases de Datos.
+  mysql_user:
+    name: "{{ item.value.name }}"
+    password: "{{ item.value.password }}"
+    priv: "{{ item.value.priv }}"
+    state: present
+  with_dict: "{{ percona_users }}"
+  no_log: True
+
+- name: Creamos el directorio de utilidades.
+  file:
+    path: "{{ percona_server_path_utiles }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0700
+  when: percona_utiles_bd
+
+- name: Instalamos MySQLTuner.
+  get_url:
+    url: https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
+    dest: "{{ percona_server_path_utiles }}/mysqltuner.pl"
+    owner: root
+    group: root
+    mode: 0740
+  when: percona_utiles_bd
+
+- name: Instalamos el script de optimización de BD.
+  template:
+    src: optimiza_bd.sh.j2
+    dest: "{{ percona_server_path_utiles }}/optimiza_bd.sh"
+    owner: root
+    group: root
+    mode: 0750
+  when: percona_utiles_bd
+
+- name: Instalamos el script de backups de BD.
+  template:
+    src: copia_bd.sh.j2
+    dest: "{{ percona_server_path_utiles }}/copia_bd.sh"
+    owner: root
+    group: root
+    mode: 0750
+  when: percona_utiles_bd
+
+- name: Creamos el directorio de Backups de la BD.
+  file:
+    path: "{{ percona_path_backups }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0640
+  when: percona_utiles_bd
+
+- name: Añadimos la tarea cron del BackUp de BD.
+  cron:
+    name: "BackUp de BDs"
+    minute: "{{ percona_cron_backup_db.minute }}"
+    hour: "{{ percona_cron_backup_db.hour }}"
+    day: "{{ percona_cron_backup_db.day }}"
+    weekday: "{{ percona_cron_backup_db.weekday }}"
+    job: "{{ percona_server_path_utiles }}/copia_bd.sh"
+  when: percona_cron_backup
+
+- name: Añadimos la tarea cron de Optimización de BD.
+  cron:
+    name: "Optimización de BDs"
+    minute: "{{ percona_cron_optimiza_db.minute }}"
+    hour: "{{ percona_cron_optimiza_db.hour }}"
+    day: "{{ percona_cron_optimiza_db.day }}"
+    weekday: "{{ percona_cron_optimiza_db.weekday }}"
+    job: "{{ percona_server_path_utiles }}/optimiza_bd.sh"
+  when: percona_cron_optimizacion

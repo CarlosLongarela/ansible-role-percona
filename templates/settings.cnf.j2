@@ -1,0 +1,38 @@
+# {{ ansible_managed }}
+
+[client]
+user                           = root
+password                       = {{ percona_root_password }}
+
+[mysqld]
+bind_address                   = {{ percona_options.bind_address }}
+performance_schema             = {{ percona_options.performance_schema }}
+skip-name-resolve              = {{ percona_options.skip_name_resolve }}
+
+max_connections                = {{ percona_options.max_connections }}
+connect_timeout                = {{ percona_options.connect_timeout }}
+max_allowed_packet             = {{ percona_options.max_allowed_packet }}
+
+innodb_buffer_pool_instances   = {{ percona_options.innodb_buffer_pool_instances }}
+innodb_buffer_pool_size        = {{ percona_options.innodb_buffer_pool_size }}
+innodb_log_file_size           = {{ percona_options.innodb_log_file_size }}
+table_open_cache               = {{ percona_options.table_open_cache }}
+
+tmp_table_size                 = {{ percona_options.tmp_table_size }}
+max_heap_table_size            = {{ percona_options.max_heap_table_size }}
+
+query_cache_type               = {{ percona_options.query_cache_type }}
+query_cache_limit              = {{ percona_options.query_cache_limit }}
+query_cache_size               = {{ percona_options.query_cache_size }}
+query_cache_min_res_unit       = {{ percona_options.query_cache_min_res_unit }}
+
+join_buffer_size               = {{ percona_options.join_buffer_size }}
+sort_buffer_size               = {{ percona_options.sort_buffer_size }}
+read_buffer_size               = {{ percona_options.read_buffer_size }}
+read_rnd_buffer_size           = {{ percona_options.read_rnd_buffer_size }}
+key_buffer_size                = {{ percona_options.key_buffer_size }}
+
+slow_query_log                 = {{ percona_options.slow_query_log }}
+long_query_time                = {{ percona_options.long_query_time }}
+log_slow_admin_statements      = {{ percona_options.log_slow_admin_statements }}
+log_queries_not_using_indexes  = {{ percona_options.log_queries_not_using_indexes }}
